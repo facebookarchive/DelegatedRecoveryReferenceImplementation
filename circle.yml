@@ -1,0 +1,10 @@
+dependencies:
+  override:
+    - mvn package
+  post:
+    - npm i -g eslint
+    - npm i -g eslint-plugin-json
+
+test:
+  override:
+    - eslint ./sdk/js-src/index.js
