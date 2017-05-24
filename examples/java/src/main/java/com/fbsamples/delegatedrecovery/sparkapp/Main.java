@@ -135,6 +135,7 @@ public class Main {
     get(Path.Web.SAVE_TOKEN, SaveTokenController.serveSaveToken);
     get(Path.Web.SAVE_TOKEN_RETURN, SaveTokenController.serveSaveTokenReturn);
     get(Path.Web.INVALIDATE_TOKEN, SaveTokenController.serveInvalidateToken);
+    get(Path.Web.RENEW_TOKEN, SaveTokenController.serveRenewToken);
 
     // recover account actions
     get(Path.Web.RECOVER_IDENTIFY_ACCOUNT, RecoverAccountController.serveIdentifyAccount);
@@ -174,7 +175,7 @@ public class Main {
   /**
    * Avoid constantly re-typing new MoustacheTemplateEngine(), new
    * ModelAndView()
-   * 
+   *
    * @param model
    * @param templatePath
    * @return

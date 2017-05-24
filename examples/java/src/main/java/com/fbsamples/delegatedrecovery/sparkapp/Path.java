@@ -19,6 +19,7 @@ public class Path {
     public static final String PRIVACY_POLICY = "/privacy.html";
     public static final String RECOVER_IDENTIFY_ACCOUNT = "/identify-account/";
     public static final String INVALIDATE_TOKEN = "/invalidate/";
+    public static final String RENEW_TOKEN = "/renew/";
   }
 
   public static class Template {
@@ -33,6 +34,6 @@ public class Path {
     public static final String RECOVER_ACCOUNT = "/recover_account.mustache";
     public static final String NO_SAVED_TOKEN = "/no_token.mustache";
     public static final String UNKNOWN_TOKEN = "/save_token_unknown.mustache";
-
+    public static final String RENEW_TOKEN = "/renew.mustache";
   }
 }

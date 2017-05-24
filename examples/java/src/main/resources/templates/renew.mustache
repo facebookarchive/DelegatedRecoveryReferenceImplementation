@@ -15,17 +15,14 @@
     <div id="title">Welcome, {{username}}</div>
     <div id="emoji">&#x1F516;</div>
     <div id="message">
-       You can recover with Facebook.
+       Click the button below to confirm renewing your token:
      </div>
-    <form method="GET" action="{{action}}">
-      <input type="hidden" name="username" value="{{username}}">
-      <input type="hidden" name="id" value="{{id}}">
-      <input class="button" type="submit" value="Forget This Token">
-    </form>
-    <form method="GET" action="{{renew-action}}">
-      <input type="hidden" name="id" value="{{id}}">
-      <input type="hidden" name="username" value="{{username}}">
-      <input class="button" type="submit" value="Renew Token">
+    <form method="POST" action="{{renew-action}}">
+      <input type="hidden" name="token" value="{{encoded-token}}">
+      <input type="hidden" name="state" value="{{state}}">
+      <input type="hidden" name="obsoletes" value="{{obsoletes}}">
+      <input type="hidden" name="nickname_hint" value="{{username}}">
+      <input class="button" type="submit" value="Confirm">
     </form>
   </body>
 </html>
