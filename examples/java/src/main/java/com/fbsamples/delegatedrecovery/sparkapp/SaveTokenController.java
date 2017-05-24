@@ -45,20 +45,27 @@ public class SaveTokenController {
    */
   public static Route serveSaveTokenReturn = (Request req, Response res) -> {
     Map<String, Object> model = new HashMap<String, Object>();
-    String id = req.queryParams("state");
-    RecoveryTokenRecord record = RecoveryTokenRecordDao.getTokenRecordById(id);
+    String state = req.queryParams("state");
+    String[] ids = state.split(",", 2);
+    RecoveryTokenRecord record = RecoveryTokenRecordDao.getTokenRecordById(ids[0]);
+    RecoveryTokenRecord obsoletedRecord =
+      ids.length > 1 ?  RecoveryTokenRecordDao.getTokenRecordById(ids[1]) : null;
 
     if (record == null) {
       model.put("action", Path.Web.DEFAULT);
+      model.put("id", ids[0]);
       return Main.render(model, Path.Template.UNKNOWN_TOKEN);
     }
 
     if (req.queryParams("status").equals("save-success")) {
       record.setStatus(RecoveryTokenRecord.Status.CONFIRMED);
+      if (obsoletedRecord != null) {
+        obsoletedRecord.setStatus(RecoveryTokenRecord.Status.INVALID);
+      }
       model.put("username", record.getUsername());
       return Main.render(model, Path.Template.SAVE_TOKEN_SUCCESS);
     } else {
-      RecoveryTokenRecordDao.deleteRecordById(id);
+      RecoveryTokenRecordDao.deleteRecordById(ids[0]);
       model.put("username", record.getUsername());
       model.put("homeAction", Path.Web.SAVE_TOKEN);
       return Main.render(model, Path.Template.SAVE_TOKEN_FAILURE);
@@ -83,40 +90,49 @@ public class SaveTokenController {
 
     Map<String, Object> model = new HashMap<String, Object>();
 
+    // We will need a new token either way: if the user how no token yet, then
+    // we will use this new token to setup recovery. If user already has a
+    // saved token token, then we use the new token to allow the user to
+    // obsolete and replace their old token with the new one.
+    byte[] id = DelegatedRecoveryUtils.newTokenID();
+    String stringID = DelegatedRecoveryUtils.encodeHex(id);
+
+    RecoveryToken token = new RecoveryToken(privateKey, // signing key
+        id, // token id
+        RecoveryToken.STATUS_REQUESTED_FLAG, // get lifecycle callbacks
+        Main.getAccountProviderConfig().getIssuer(), // our origin
+        Main.getRecoveryProviderConfig().getIssuer(), // origin from
+                                                      // Facebook's config
+        new byte[0], // no data
+        new byte[0]); // no binding
+
+    String encoded = token.getEncoded();
+
+    model.put("encoded-token", encoded);
+    model.put("username", username);
+    model.put("save-token", Main.getRecoveryProviderConfig().getSaveToken());
+
+    // keep a record of tokens we've created for this username
+    // (note, in this sample app this record does not survive service restart)
+    RecoveryTokenRecordDao.addRecord(
+        new RecoveryTokenRecord(
+            username,
+            stringID,
+            token.getAudience(),
+            DelegatedRecoveryUtils.sha256(Base64.getDecoder().decode(encoded)),
+            RecoveryTokenRecord.Status.PROVISIONAL));
+
     if (savedTokens.isEmpty()) { // user has no saved tokens yet
-      byte[] id = DelegatedRecoveryUtils.newTokenID();
-      String stringID = DelegatedRecoveryUtils.encodeHex(id);
-
-      RecoveryToken token = new RecoveryToken(privateKey, // signing key
-          id, // token id
-          RecoveryToken.STATUS_REQUESTED_FLAG, // get lifecycle callbacks
-          Main.getAccountProviderConfig().getIssuer(), // our origin
-          Main.getRecoveryProviderConfig().getIssuer(), // origin from
-                                                        // Facebook's config
-          new byte[0], // no data
-          new byte[0]); // no binding
-
-      String encoded = token.getEncoded();
-
-      model.put("encoded-token", encoded);
-      model.put("username", username);
       model.put("state", stringID);
-      model.put("save-token", Main.getRecoveryProviderConfig().getSaveToken());
-
-      // keep a record of tokens we've created for this username
-      // (note, in this sample app this record does not survive service restart)
-      RecoveryTokenRecordDao.addRecord(
-          new RecoveryTokenRecord(
-              username,
-              stringID,
-              token.getAudience(),
-              DelegatedRecoveryUtils.sha256(Base64.getDecoder().decode(encoded)),
-              RecoveryTokenRecord.Status.PROVISIONAL));
 
       return Main.render(model, Path.Template.SAVE_TOKEN);
     } else {
+      // Include both the new and old token IDs in the state when renewing the
+      // token.
+      model.put("state", stringID + "," + savedTokens.get(0).getId());
       model.put("action", Path.Web.INVALIDATE_TOKEN);
       model.put("id", savedTokens.get(0).getId());
+      model.put("obsoletes", savedTokens.get(0).getId());
       model.put("username", username);
       return Main.render(model, Path.Template.INVALIDATE_TOKEN);
     }
