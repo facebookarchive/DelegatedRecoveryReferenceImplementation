@@ -52,6 +52,29 @@ const recordStatus = {
     invalid: 'invalid',
 };
 
+function createNewToken(username, config) {
+    const id = crypto.randomBytes(16);
+    const token = new RecoveryToken(
+        recoveryPrivKey,
+        id,
+        RecoveryToken.STATUS_REQUESTED_FLAG,
+        issuerOrigin,
+        config.issuer,
+        new Date().toISOString(),
+        Buffer.alloc(0),
+        Buffer.alloc(0));
+
+    tokenRecords.push({
+        status: recordStatus.provisional,
+        username: username,
+        id: id.toString('hex'),
+        issuer: config.issuer,
+        hash: delegatedRecoverySDK.sha256(new Buffer(token.encoded, 'base64')),
+    });
+    
+    return token;
+}
+
 const app = express();
 app.set('port', (process.env.PORT || 5000));
 app.use(express.static(__dirname + '/static'));
@@ -128,29 +151,11 @@ app.get(path.web.saveToken, (req, res) => {
 
         if (tokenRecord === undefined) {
             recoveryProviderConfig().then((config) => {
-                const id = crypto.randomBytes(16);
-                const token = new RecoveryToken(
-                    recoveryPrivKey,
-                    id,
-                    RecoveryToken.STATUS_REQUESTED_FLAG,
-                    issuerOrigin,
-                    config.issuer,
-                    new Date().toISOString(),
-                    Buffer.alloc(0),
-                    Buffer.alloc(0));
-
-                tokenRecords.push({
-                    status: recordStatus.provisional,
-                    username: username,
-                    id: id.toString('hex'),
-                    issuer: config.issuer,
-                    hash: delegatedRecoverySDK.sha256(new Buffer(token.encoded, 'base64')),
-                });
-
+                const token = createNewToken(username, config);
                 res.render(path.template.saveToken, {
                     "encoded-token": token.encoded,
                     "username": username,
-                    "state": id.toString('hex'),
+                    "state": token.id.toString('hex'),
                     "save-token": config['save-token'],
                 });
             }, (e) => {
@@ -159,6 +164,7 @@ app.get(path.web.saveToken, (req, res) => {
         } else {
             res.render(path.template.invalidateToken, {
                 "action": path.web.invalidateToken,
+                "renew-action": path.web.renewToken,
                 "id": tokenRecord.id,
                 "username": username,
             });
@@ -167,19 +173,32 @@ app.get(path.web.saveToken, (req, res) => {
 });
 
 app.get(path.web.saveTokenReturn, (req, res) => {
-    const id = req.query.state;
-    const tokenRecord = tokenRecords.find((record) => record.id === id);
+    const state = req.query.state;
+    const ids = state.split(',', 2);
+    const tokenRecord = tokenRecords.find((record) => record.id === ids[0]);
+    
+    let obsoletedRecord = null;
+    
+    if (ids.length > 1) {
+        obsoletedRecord = tokenRecords.find((record) => {
+            return (record.id === ids[1] && record.status === recordStatus.confirmed);
+        });
+    }
+
     if (tokenRecord === undefined) {
         res.render(path.template.unknownToken, {
             "action": path.web.default,
         });
     } else if (req.query.status === 'save-success') {
         tokenRecord.status = recordStatus.confirmed;
+        if (obsoletedRecord !== null) {
+            obsoletedRecord.status = recordStatus.invalid;
+        }
         res.render(path.template.saveTokenSuccess, {
             "username": tokenRecord.username,
         });
     } else {
-        tokenRecords.splice(tokenRecords.findIndex((record) => record.id === id), 1);
+        tokenRecords.splice(tokenRecords.findIndex((record) => record.id === ids[0]), 1);
         res.render(path.template.saveTokenFailure, {
             "username": tokenRecord.username,
             "homeAction": path.web.saveToken,
@@ -225,6 +244,24 @@ app.get(path.web.recoverIdentifyAccount, (req, res) => {
         }
     }, (e) => {
         res.send(500, e);
+    });
+});
+
+app.get(path.web.renewToken, (req, res) => {
+    const obsoleteId = req.query.id;
+    const username = req.query.username;
+    
+    recoveryProviderConfig().then((config) => {
+        const token = createNewToken(username, config);
+        res.render(path.template.renewToken, {
+            "encoded-token": token.encoded,
+            "username": username,
+            "renew-action": config['save-token'],
+            "state": token.id.toString('hex') + "," + obsoleteId,
+            "obsoletes": obsoleteId,
+        });
+    }, (e) => {
+        res.send(500, e.message);
     });
 });
 
