@@ -67,7 +67,16 @@ Edit the `examples/nodejs/app.json` and `examples/nodejs/package.json` files and
 ```bash
 $ git commit -am "update app.json and package.json"
 $ heroku create
+```
+
+Because we only want to push the example app, not the entire reference implementation repository, use the following command to deploy:
+```
 $ git subtree push --prefix examples/nodejs heroku master
+```
+
+Note, if you use `git commit --amend` as part of your develompent process, in order to re-deploy an amended commit to the subtree you will need to use the following command line:
+```
+$ git push heroku `git subtree split --prefix examples/nodejs`:master --force
 ```
 
 Ensure that at least one instance of the app is running:
