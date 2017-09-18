@@ -14,6 +14,7 @@ const web = {
     privacyPolicy: '/privacy.html',
     recoverIdentifyAccount: '/identify-account/',
     invalidateToken: '/invalidate/',
+    renewToken: '/renew/',
 };
 
 const template = {
@@ -28,6 +29,7 @@ const template = {
     recoverAccount: 'recover_account.mustache',
     noSavedToken: 'no_token.mustache',
     unknownToken: 'save_token_unknown.mustache',
+    renewToken: 'renew.mustache',
 };
 
 module.exports = {
