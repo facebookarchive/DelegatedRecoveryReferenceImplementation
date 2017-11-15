@@ -3,7 +3,7 @@
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree. An additional grant 
+ * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 package com.facebook.delegatedrecovery;
@@ -42,6 +42,11 @@ public class RecoveryToken {
    * Status callbacks requested token options flag.
    */
   public static final byte STATUS_REQUESTED_FLAG = 0x01;
+
+  /**
+   * Low-friction token recovery requested options flag.
+   */
+  public static final byte LOW_FRICTION_REQUESTED_FLAG = 0x02;
 
   /**
    * Mandatory version field value.
@@ -157,7 +162,7 @@ public class RecoveryToken {
 
   /**
    * Check the signature on a token.
-   * 
+   *
    * @param keys they keys to validate
    * @return whether signature is valid
    * @throws InvalidKeyException If the keys are invalid
@@ -182,7 +187,7 @@ public class RecoveryToken {
   /**
    * Construct a token from an encoded string. This constructor does not
    * validate the token signature.
-   * 
+   *
    * @param encoded Base64 encoded binary token
    * @throws InvalidOriginException If the issuer or audience in the token are invalid
    */

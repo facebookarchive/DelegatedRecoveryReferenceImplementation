@@ -35,6 +35,7 @@ const originRegex = /^https:\/\/([a-z0-9-]{1,63}\.)+([a-z]{2,63})(:[\d]+)?$/;
 class RecoveryToken {
     static get NO_OPTIONS() { return 0x00; }
     static get STATUS_REQUESTED_FLAG() { return 0x01; }
+    static get LOW_FRICTION_REQUESTED_FLAG() { return 0x02; }
     static get VERSION() { return 0x00; }
     static get TYPE_RECOVERY_TOKEN() { return 0x00; }
     static get TYPE_COUNTERSIGNED_TOKEN() { return 0x01; }
@@ -49,7 +50,8 @@ class RecoveryToken {
      *
      * @param {string} privateKey - the base64 encoded EC PRIVATE KEY on a single line with no PEM wrapping
      * @param {Buffer} id - 16 byte Buffer representing the token id
-     * @param {number} options - one of RecoveryToken.NO_OPTIONS or RecoveryToken.STATUS_REQUESTED_FLAG
+     * @param {number} options - either RecoveryToken.NO_OPTIONS, or a combination of
+     *                           RecoveryToken.STATUS_REQUESTED_FLAG and RecoveryToken.LOW_FRICTION_REQUESTED_FLAG
      * @param {string} issuer - RFC6454 ASCII encoded origin of the token issuer
      * @param {string} audience - RFC6454 ASCII encoded origin of the token audience
      * @param {string} issuedTime - ISO8601 ASCII string representing token creation time
@@ -79,7 +81,7 @@ class RecoveryToken {
         const issuerBuf = new Buffer(this.issuer, 'ascii');
         const audienceBuf = new Buffer(this.audience, 'ascii');
         const issuedTimeBuf = new Buffer(this.issuedTime, 'ascii');
-        
+
         let tokenLength =
         1 + // uint8 version
         1 + // uint8 type
@@ -252,7 +254,7 @@ class CountersignedToken extends RecoveryToken {
         if (fields.issuer !== issuer) { throw new Error('incorrect issuer'); }
         if (fields.audience !== audience) { throw new Error('incorrect audience'); }
         if (!fields.binding.equals(binding)) { throw new Error('incorrect token binding'); }
-        
+
         let issuedTime = new Date(fields.issuedTime);
         if (Math.abs(issuedTime.value - new Date().value) > (allowedClockSkew * 1000)) {
             throw new Error('token issued outside allowed clock skew');
@@ -272,7 +274,7 @@ class CountersignedToken extends RecoveryToken {
         if (!RecoveryToken.isSignatureValid(serialized, publicKeys, fields.signatureIndex)) {
             throw new Error('invalid countersigned token signature');
         }
-        
+
         return token;
     }
 }
